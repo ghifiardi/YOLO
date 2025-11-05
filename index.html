@@ -611,8 +611,8 @@
                     <button
                         id="shiBtn"
                         class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-lg font-semibold transition shadow-lg hover:shadow-xl"
-                        aria-label="Run self-healing orchestration demo"
-                    >⚙️ Self-Healing Demo</button>
+                        aria-label="Run live threat response demonstration"
+                    >🛡️ Live Threat Response</button>
                     <button
                         id="investorBtn"
                         class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-lg font-semibold transition shadow-lg hover:shadow-xl"
@@ -815,20 +815,67 @@
                 </nav>
                 
                 <!-- Autonomous Self-Healing Panel -->
-                <section class="rounded-xl bg-slate-950 border border-slate-700 p-3" aria-label="Autonomous Self-Healing">
-                    <div class="flex items-center justify-between mb-2">
+                <section class="rounded-xl bg-slate-950 border border-slate-700 p-4" aria-label="Autonomous Self-Healing">
+                    <div class="flex items-center justify-between mb-3">
                         <div class="flex items-center gap-2">
-                            <span>🧩</span>
-                            <span class="text-sm font-semibold text-white">Autonomous Self-Healing</span>
+                            <span>🛡️</span>
+                            <span class="text-sm font-semibold text-white">Live Threat Response Demo</span>
                         </div>
-                        <span id="shiStatus" class="text-xs text-slate-400">Idle</span>
+                        <span id="shiStatus" class="text-xs px-2 py-1 rounded bg-slate-800 text-slate-400">Ready</span>
                     </div>
-                    <div class="grid grid-cols-3 gap-2 mb-2 text-xs">
-                        <div class="bg-slate-900 rounded p-2"><div class="text-slate-400">Detect</div><div id="shiStepDetect" class="font-semibold text-slate-200">-</div></div>
-                        <div class="bg-slate-900 rounded p-2"><div class="text-slate-400">Decide</div><div id="shiStepDecide" class="font-semibold text-slate-200">-</div></div>
-                        <div class="bg-slate-900 rounded p-2"><div class="text-slate-400">Remediate</div><div id="shiStepRemediate" class="font-semibold text-slate-200">-</div></div>
+                    
+                    <!-- Threat Summary Card -->
+                    <div id="shiThreatCard" class="hidden mb-3 p-3 bg-gradient-to-r from-red-900/20 to-orange-900/20 border border-red-700/30 rounded-lg">
+                        <div class="flex items-start gap-2 mb-2">
+                            <span class="text-red-400 text-lg">⚠️</span>
+                            <div class="flex-1">
+                                <div class="text-sm font-semibold text-red-300" id="shiThreatTitle">Threat Detected</div>
+                                <div class="text-xs text-slate-400 mt-1" id="shiThreatDesc">-</div>
+                            </div>
+                        </div>
                     </div>
-                    <div id="shiLog" class="scroll-container h-40 bg-slate-900/60 border border-slate-700 rounded p-2 space-y-1 text-[11px] leading-4" role="log" aria-live="polite"></div>
+
+                    <!-- Agent Status Cards -->
+                    <div class="grid grid-cols-3 gap-2 mb-3">
+                        <div class="bg-slate-900 rounded-lg p-2 border border-slate-700">
+                            <div class="flex items-center gap-1 mb-1">
+                                <span class="text-blue-400 text-xs">🛡️</span>
+                                <div class="text-xs text-slate-400">ADA Detects</div>
+                            </div>
+                            <div id="shiStepDetect" class="text-xs font-semibold text-slate-300">Waiting...</div>
+                        </div>
+                        <div class="bg-slate-900 rounded-lg p-2 border border-slate-700">
+                            <div class="flex items-center gap-1 mb-1">
+                                <span class="text-purple-400 text-xs">🧠</span>
+                                <div class="text-xs text-slate-400">TAA Predicts</div>
+                            </div>
+                            <div id="shiStepDecide" class="text-xs font-semibold text-slate-300">Waiting...</div>
+                        </div>
+                        <div class="bg-slate-900 rounded-lg p-2 border border-slate-700">
+                            <div class="flex items-center gap-1 mb-1">
+                                <span class="text-green-400 text-xs">✓</span>
+                                <div class="text-xs text-slate-400">CRA Validates</div>
+                            </div>
+                            <div id="shiStepRemediate" class="text-xs font-semibold text-slate-300">Waiting...</div>
+                        </div>
+                    </div>
+
+                    <!-- Action Timeline -->
+                    <div class="mb-3">
+                        <div class="text-xs text-slate-400 mb-2">Response Timeline:</div>
+                        <div id="shiLog" class="scroll-container h-32 bg-slate-900/60 border border-slate-700 rounded p-2 space-y-1.5 text-xs leading-relaxed" role="log" aria-live="polite"></div>
+                    </div>
+
+                    <!-- Results Summary -->
+                    <div id="shiResults" class="hidden mt-3 p-3 bg-gradient-to-r from-green-900/20 to-emerald-900/20 border border-green-700/30 rounded-lg">
+                        <div class="flex items-start gap-2">
+                            <span class="text-green-400 text-lg">✅</span>
+                            <div class="flex-1">
+                                <div class="text-sm font-semibold text-green-300 mb-1">Threat Contained</div>
+                                <div class="text-xs text-slate-300 space-y-1" id="shiResultsList"></div>
+                            </div>
+                        </div>
+                    </div>
                 </section>
             </div>
         </main>
@@ -1355,82 +1402,188 @@
         class ParentOrchestrator {
             constructor(ui){
                 this.ui = ui;
-                this.ADA = {
-                    async detect(){
-                        await this.sleep(500);
-                        return { indicator: 'Suspicious lateral movement', severity: 'high' };
+                this.scenarios = [
+                    {
+                        threat: 'Lateral Movement Attack',
+                        description: 'Unauthorized access detected: Attacker moving from web server to database',
+                        source: 'web-prod-01',
+                        target: 'db-prod-02',
+                        severity: 'high',
+                        adaDetect: 'Multiple failed auth attempts followed by successful connection',
+                        taaPredict: 'Attacker will attempt data exfiltration within 5 minutes',
+                        actions: [
+                            { name: 'Isolate Network Segment', desc: 'Block all traffic from web-prod-01 subnet', icon: '🔥' },
+                            { name: 'Revoke Credentials', desc: 'Disable compromised user accounts', icon: '🔐' },
+                            { name: 'Kill Malicious Process', desc: 'Terminate suspicious process on db-prod-02', icon: '🖥️' }
+                        ]
                     },
-                    sleep: (ms)=> new Promise(r=>setTimeout(r, ms))
-                };
-                this.TAA = {
-                    async predict(alert){
-                        await this.sleep(500);
-                        return { plan: ['isolate_subnet','revoke_credentials','remediate_endpoint'], confidence: 0.93, context: alert };
+                    {
+                        threat: 'Data Exfiltration Attempt',
+                        description: 'Large data transfer detected: 2.5GB sent to external IP',
+                        source: 'api-server-03',
+                        target: 'external:185.220.101.x',
+                        severity: 'critical',
+                        adaDetect: 'Unusual outbound data volume (250x normal baseline)',
+                        taaPredict: 'Attacker will complete exfiltration in 3 minutes',
+                        actions: [
+                            { name: 'Block External IP', desc: 'Firewall rule blocks 185.220.101.x', icon: '🚫' },
+                            { name: 'Isolate Endpoint', desc: 'Disconnect api-server-03 from network', icon: '🔌' },
+                            { name: 'Preserve Evidence', desc: 'Create forensic snapshot for investigation', icon: '📸' }
+                        ]
                     },
-                    sleep: (ms)=> new Promise(r=>setTimeout(r, ms))
-                };
-                this.CRA = {
-                    async validate(plan){
-                        await this.sleep(400);
-                        if (plan.confidence < 0.7) throw new Error('CRA veto: low confidence');
-                        return true;
-                    },
-                    sleep: (ms)=> new Promise(r=>setTimeout(r, ms))
-                };
+                    {
+                        threat: 'Privilege Escalation',
+                        description: 'Service account attempting admin-level access',
+                        source: 'svc-account:app-backend',
+                        target: 'admin-endpoints',
+                        severity: 'high',
+                        adaDetect: 'Service account requesting admin API tokens',
+                        taaPredict: 'Attacker will gain full system access in 8 minutes',
+                        actions: [
+                            { name: 'Revoke Service Account', desc: 'Disable svc-account:app-backend immediately', icon: '🔐' },
+                            { name: 'Reset Admin Credentials', desc: 'Force password reset for all admin accounts', icon: '🔄' },
+                            { name: 'Review Access Logs', desc: 'Analyze all admin-endpoint access attempts', icon: '📋' }
+                        ]
+                    }
+                ];
             }
-            log(message, level='info'){
+            
+            sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+            
+            log(message, level='info', icon=''){
                 const el = document.createElement('div');
                 el.className = 'log-entry';
                 const ts = new Date().toLocaleTimeString();
-                const color = level==='error' ? 'text-red-400' : level==='warn' ? 'text-yellow-400' : 'text-slate-300';
-                el.innerHTML = `<span class="text-slate-500">[${ts}]</span> <span class="${color}">${message}</span>`;
+                let color = 'text-slate-300';
+                let bgColor = '';
+                if (level === 'error') {
+                    color = 'text-red-400';
+                    bgColor = 'bg-red-900/20';
+                } else if (level === 'warn') {
+                    color = 'text-yellow-400';
+                    bgColor = 'bg-yellow-900/20';
+                } else if (level === 'success') {
+                    color = 'text-green-400';
+                    bgColor = 'bg-green-900/20';
+                }
+                const iconHtml = icon ? `<span class="mr-1">${icon}</span>` : '';
+                el.className = `log-entry ${bgColor} px-2 py-1 rounded`;
+                el.innerHTML = `<span class="text-slate-500 text-xs">[${ts}]</span> <span class="${color}">${iconHtml}${message}</span>`;
                 this.ui.log.appendChild(el);
                 this.ui.log.scrollTop = this.ui.log.scrollHeight;
             }
-            setStep(id, text){
+            
+            setStep(id, text, status='active'){
                 const target = this.ui[id];
-                if (target) target.textContent = text;
+                if (target) {
+                    target.textContent = text;
+                    const card = target.closest('.bg-slate-900');
+                    if (card) {
+                        card.classList.remove('border-blue-500', 'border-purple-500', 'border-green-500', 'border-green-600');
+                        if (status === 'active') {
+                            if (id === 'shiStepDetect') card.classList.add('border-blue-500');
+                            else if (id === 'shiStepDecide') card.classList.add('border-purple-500');
+                            else if (id === 'shiStepRemediate') card.classList.add('border-green-500');
+                        } else if (status === 'completed') {
+                            card.classList.add('border-green-600');
+                        }
+                    }
+                }
             }
-            setStatus(text){ this.ui.status.textContent = text; }
+            
+            setStatus(text, color='slate'){
+                this.ui.status.textContent = text;
+                const colors = {
+                    'slate': 'bg-slate-800 text-slate-400',
+                    'blue': 'bg-blue-900/50 text-blue-300',
+                    'green': 'bg-green-900/50 text-green-300',
+                    'red': 'bg-red-900/50 text-red-300'
+                };
+                this.ui.status.className = `text-xs px-2 py-1 rounded ${colors[color] || colors.slate}`;
+            }
+            
+            showThreatCard(scenario){
+                const card = document.getElementById('shiThreatCard');
+                const title = document.getElementById('shiThreatTitle');
+                const desc = document.getElementById('shiThreatDesc');
+                title.textContent = scenario.threat;
+                desc.textContent = scenario.description;
+                card.classList.remove('hidden');
+            }
+            
+            hideResults(){
+                document.getElementById('shiResults').classList.add('hidden');
+            }
+            
+            showResults(actions){
+                const resultsDiv = document.getElementById('shiResults');
+                const resultsList = document.getElementById('shiResultsList');
+                resultsList.innerHTML = actions.map(a => 
+                    `<div class="flex items-center gap-2"><span>${a.icon}</span><span>${a.name}</span></div>`
+                ).join('');
+                resultsDiv.classList.remove('hidden');
+            }
+            
             async runScenario(){
                 try{
+                    // Reset UI
                     this.ui.log.innerHTML = '';
-                    this.setStatus('Running');
-                    this.log('ADA: scanning environment for anomalies…');
-                    const alert = await this.ADA.detect();
-                    this.setStep('detect','Anomaly detected');
-
-                    this.log('TAA: predicting attacker next moves…');
-                    const plan = await this.TAA.predict(alert);
-                    this.setStep('decide',`Plan: ${plan.plan.join(' → ')}`);
-
-                    this.log('CRA: validating compliance for the plan…');
-                    await this.CRA.validate(plan);
-                    this.log('CRA: validation passed.');
-
-                    await this.execute(plan.plan);
-                    this.setStep('remediate','Completed');
-                    this.setStatus('Success');
-                    this.log('Verification: environment stable ✅');
-                }catch(err){
-                    this.setStatus('Failed');
-                    this.log(`Error: ${err.message}`,'error');
-                    this.log('Rollback: reverting any partial changes…','warn');
-                    await this.rollback();
-                    this.log('Rollback complete.','warn');
+                    this.hideResults();
+                    document.getElementById('shiThreatCard').classList.add('hidden');
+                    this.setStatus('Analyzing...', 'blue');
+                    
+                    // Select random scenario
+                    const scenario = this.scenarios[Math.floor(Math.random() * this.scenarios.length)];
+                    this.showThreatCard(scenario);
+                    
+                    // Step 1: ADA Detection
+                    this.setStep('shiStepDetect', 'Analyzing...', 'active');
+                    this.log('🛡️ ADA: Scanning network traffic and system logs...', 'info');
+                    await this.sleep(800);
+                    this.log(`🔍 Detected: ${scenario.adaDetect}`, 'warn');
+                    this.setStep('shiStepDetect', scenario.threat, 'completed');
+                    this.log(`📍 Source: ${scenario.source} → Target: ${scenario.target}`, 'info');
+                    
+                    // Step 2: TAA Prediction
+                    this.setStep('shiStepDecide', 'Predicting...', 'active');
+                    this.log('🧠 TAA: Analyzing attack pattern and predicting next moves...', 'info');
+                    await this.sleep(1000);
+                    this.log(`🔮 Prediction: ${scenario.taaPredict}`, 'warn');
+                    this.setStep('shiStepDecide', `${scenario.actions.length} actions planned`, 'completed');
+                    
+                    // Step 3: CRA Validation
+                    this.setStep('shiStepRemediate', 'Validating...', 'active');
+                    this.log('✓ CRA: Checking compliance rules (PDP, GDPR)...', 'info');
+                    await this.sleep(600);
+                    this.log('✅ CRA: All actions comply with regulations', 'success');
+                    this.setStep('shiStepRemediate', 'Approved', 'completed');
+                    
+                    // Step 4: Execute Actions
+                    this.log('⚙️ Executing autonomous response plan...', 'info');
+                    await this.sleep(300);
+                    
+                    for (let i = 0; i < scenario.actions.length; i++) {
+                        const action = scenario.actions[i];
+                        this.log(`${action.icon} Executing: ${action.name}`, 'info');
+                        await this.sleep(700);
+                        this.log(`   → ${action.desc}`, 'info');
+                        await this.sleep(500);
+                        this.log(`   ✓ ${action.name} completed successfully`, 'success');
+                    }
+                    
+                    // Success
+                    this.setStatus('Threat Contained', 'green');
+                    this.log('🎉 All containment actions completed successfully', 'success');
+                    this.log('🔒 System is now secure', 'success');
+                    this.showResults(scenario.actions);
+                    
+                } catch(err) {
+                    this.setStatus('Error', 'red');
+                    this.log(`❌ Error: ${err.message}`, 'error');
+                    this.log('🔄 Initiating rollback procedure...', 'warn');
+                    await this.sleep(500);
+                    this.log('✅ Rollback completed - system restored to safe state', 'success');
                 }
-            }
-            async execute(steps){
-                for (const s of steps){
-                    this.log(`Execute: ${s}…`);
-                    await new Promise(r=>setTimeout(r, 500));
-                    // introduce a small failure chance; guarded by rollback
-                    if (Math.random() < 0.05) throw new Error(`Runbook failed at step: ${s}`);
-                    this.log(`OK: ${s}`);
-                }
-            }
-            async rollback(){
-                await new Promise(r=>setTimeout(r, 400));
             }
         }
 
