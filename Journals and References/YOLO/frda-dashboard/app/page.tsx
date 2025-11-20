@@ -15,54 +15,85 @@ import {
   Server, 
   CheckCircle, 
   XCircle,
-  Terminal
+  Terminal,
+  Upload,
+  Settings
 } from 'lucide-react';
 
 // --- Components ---
 
 // 1. The "Live" Camera Feed Simulation
-const CameraFeed = ({ scenario, scanLine, isScanning }: { scenario: string; scanLine: number; isScanning: boolean }) => {
+const CameraFeed = ({ scenario, scanLine, isScanning, userProfile }: { scenario: string; scanLine: number; isScanning: boolean; userProfile: { name: string; id: string; photo: string | null } }) => {
   return (
-    <div className="relative w-full h-96 bg-slate-900 rounded-xl overflow-hidden border-2 border-slate-700 shadow-2xl">
+    <div className="relative w-full h-96 bg-slate-900 rounded-xl overflow-hidden border-2 border-slate-700 shadow-2xl group">
       {/* Header Overlay */}
       <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-black/60 px-3 py-1 rounded text-xs text-cyan-400 font-mono">
         <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-        REC • 1080p • YOLO11-n Inference
+        REC • 1080p • YOLO11-n • {userProfile.id}
       </div>
 
-      {/* The "Video" Content - Abstract Representation */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        {scenario === 'normal' && (
-          <div className="flex flex-col items-center opacity-80 transition-all duration-500">
-            <User size={160} className="text-slate-400" />
-            <div className="mt-4 text-slate-500 font-mono">Subject: 98.2% Match</div>
+      {/* The "Video" Content */}
+      <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
+        {userProfile.photo ? (
+          // --- REAL USER PHOTO MODE ---
+          <div className={`relative w-full h-full transition-all duration-500 flex items-center justify-center`}>
+             {/* Base Image */}
+             <img 
+               src={userProfile.photo} 
+               alt="Subject" 
+               className={`max-w-full max-h-full object-cover ${
+                 scenario === 'spoof' ? 'blur-[1px] brightness-110 contrast-125' : ''
+               }`}
+             />
+             
+             {/* SPOOF EFFECT: Moiré Pattern Overlay */}
+             {scenario === 'spoof' && (
+               <div 
+                 className="absolute inset-0 opacity-30 pointer-events-none"
+                 style={{
+                   backgroundImage: 'radial-gradient(circle, transparent 2px, #000 2px)',
+                   backgroundSize: '4px 4px'
+                 }}
+               />
+             )}
           </div>
-        )}
+        ) : (
+          // --- ABSTRACT ICON MODE (Fallback) ---
+          <>
+            {scenario === 'normal' && (
+              <div className="flex flex-col items-center opacity-80 transition-all duration-500">
+                <User size={160} className="text-slate-400" />
+                <div className="mt-4 text-slate-500 font-mono">Subject: {userProfile.name}</div>
+              </div>
+            )}
 
-        {scenario === 'spoof' && (
-          <div className="flex flex-col items-center animate-pulse transition-all duration-500">
-             <div className="relative">
-               <div className="absolute -inset-4 border-4 border-red-500/50 rounded-lg animate-ping"></div>
-               <div className="border-4 border-red-600 p-6 rounded-lg bg-slate-800/80">
-                  <User size={140} className="text-red-400 blur-[2px]" />
-                  <div className="absolute bottom-2 right-2 bg-red-600 text-white text-xs px-2 py-0.5 rounded">STATIC TEXTURE</div>
-               </div>
-             </div>
-          </div>
-        )}
-
-        {scenario === 'device' && (
-          <div className="flex flex-col items-center transition-all duration-500">
-            <div className="relative">
-              <User size={160} className="text-slate-500" />
-              {/* The detected phone */}
-              <div className="absolute bottom-0 -right-12 animate-bounce">
-                 <div className="border-2 border-yellow-400 p-2 bg-yellow-900/30 rounded">
-                    <Smartphone size={64} className="text-yellow-400" />
-                    <div className="absolute -top-3 -right-3 bg-yellow-500 text-black text-xs font-bold px-1 rounded">OBJ: PHONE</div>
+            {scenario === 'spoof' && (
+              <div className="flex flex-col items-center animate-pulse transition-all duration-500">
+                 <div className="relative">
+                   <div className="absolute -inset-4 border-4 border-red-500/50 rounded-lg animate-ping"></div>
+                   <div className="border-4 border-red-600 p-6 rounded-lg bg-slate-800/80">
+                      <User size={140} className="text-red-400 blur-[2px]" />
+                      <div className="absolute bottom-2 right-2 bg-red-600 text-white text-xs px-2 py-0.5 rounded">STATIC TEXTURE</div>
+                   </div>
                  </div>
               </div>
-            </div>
+            )}
+
+            {scenario === 'device' && (
+               <div className="flex flex-col items-center transition-all duration-500">
+                <User size={160} className="text-slate-500" />
+              </div>
+            )}
+          </>
+        )}
+
+        {/* DEVICE OVERLAY (Always renders on top of photo or icon) */}
+        {scenario === 'device' && (
+          <div className="absolute bottom-10 right-12 animate-bounce z-30">
+             <div className="border-2 border-yellow-400 p-2 bg-yellow-900/80 backdrop-blur-sm rounded shadow-xl">
+                <Smartphone size={64} className="text-yellow-400" />
+                <div className="absolute -top-3 -right-3 bg-yellow-500 text-black text-xs font-bold px-1 rounded">OBJ: PHONE</div>
+             </div>
           </div>
         )}
       </div>
@@ -70,7 +101,7 @@ const CameraFeed = ({ scenario, scanLine, isScanning }: { scenario: string; scan
       {/* YOLO Bounding Boxes Layer */}
       <div className="absolute inset-0 z-10">
          {scenario === 'normal' && (
-           <div className="absolute top-1/4 left-1/3 w-1/3 h-1/2 border-2 border-green-500 rounded-lg opacity-80">
+           <div className="absolute top-1/4 left-1/3 w-1/3 h-1/2 border-2 border-green-500 rounded-lg opacity-80 shadow-[0_0_15px_rgba(34,197,94,0.3)]">
               <div className="absolute -top-6 left-0 bg-green-500 text-black text-xs px-2 py-1 font-bold">
                 FACE_REAL: 0.99
               </div>
@@ -78,7 +109,7 @@ const CameraFeed = ({ scenario, scanLine, isScanning }: { scenario: string; scan
          )}
          
          {scenario === 'spoof' && (
-           <div className="absolute top-1/4 left-1/3 w-1/3 h-1/2 border-2 border-red-600 rounded-lg">
+           <div className="absolute top-1/4 left-1/3 w-1/3 h-1/2 border-2 border-red-600 rounded-lg shadow-[0_0_20px_rgba(220,38,38,0.5)]">
               <div className="absolute -top-6 left-0 bg-red-600 text-white text-xs px-2 py-1 font-bold flex items-center gap-1">
                 <AlertTriangle size={10} /> SPOOF_PRINT: 0.98
               </div>
@@ -117,6 +148,12 @@ const SOCPipeline = ({ activeAgent, logs }: { activeAgent: string | null; logs: 
     { id: 'CLA', label: 'CLA', sub: 'Response', icon: Lock, color: 'text-red-400', border: 'border-red-500' },
   ];
 
+  const logsEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [logs]);
+
   return (
     <div className="mt-6 bg-slate-800 p-4 rounded-xl border border-slate-700">
       <h3 className="text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2">
@@ -154,7 +191,7 @@ const SOCPipeline = ({ activeAgent, logs }: { activeAgent: string | null; logs: 
             </div>
           ))
         )}
-        <div id="log-end" />
+        <div ref={logsEndRef} />
       </div>
     </div>
   );
@@ -256,6 +293,26 @@ export default function FRDASimulation() {
   const [scanLine, setScanLine] = useState(0);
   const [logs, setLogs] = useState<Array<{ time: string; agent: string; message: string; color: string }>>([]);
   const [activeAgent, setActiveAgent] = useState<string | null>(null);
+  const [isSetupOpen, setIsSetupOpen] = useState(true);
+  
+  // User Profile State
+  const [userProfile, setUserProfile] = useState<{ name: string; id: string; photo: string | null }>({
+    name: 'Investor Demo',
+    id: 'ID-9928-X',
+    photo: null
+  });
+
+  // Handle Image Upload
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setUserProfile(prev => ({ ...prev, photo: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Animation Loop for scan line
   useEffect(() => {
@@ -286,11 +343,11 @@ export default function FRDASimulation() {
     // Reset then animate
     if (type === 'normal') {
       setRiskScore(12);
-      addLog('FRDA', 'Processing video stream...', 'text-cyan-400', 100);
-      addLog('FRDA', 'Liveness Challenge: PASSED', 'text-green-400', 800);
-      addLog('FRDA', 'No artifacts detected.', 'text-green-400', 1200);
-      addLog('TAA', 'User behavior normal. No threat.', 'text-purple-400', 1800);
-      addLog('CLA', 'Access Granted.', 'text-green-500', 2400);
+      addLog('FRDA', `Analyzing frame: ${userProfile.name}...`, 'text-cyan-400', 100);
+      addLog('FRDA', 'Liveness Challenge: PASSED (Natural Blink)', 'text-green-400', 800);
+      addLog('FRDA', 'Depth Map: Consistent 3D structure.', 'text-green-400', 1200);
+      addLog('TAA', 'User behavior matches historic baseline.', 'text-purple-400', 1800);
+      addLog('CLA', `Access Granted for ${userProfile.id}.`, 'text-green-500', 2400);
       setTimeout(() => setActiveAgent(null), 3000);
     } 
     else if (type === 'spoof') {
@@ -300,12 +357,12 @@ export default function FRDASimulation() {
       setTimeout(() => setRiskScore(88), 1500);
       setTimeout(() => setRiskScore(99), 2000);
 
-      addLog('FRDA', 'Analyzing facial texture...', 'text-cyan-400', 100);
-      addLog('FRDA', 'ALERT: Moiré pattern detected (Screen Replay).', 'text-red-500', 800);
-      addLog('FRDA', 'Liveness Challenge: FAILED (No micro-motion).', 'text-red-500', 1500);
+      addLog('FRDA', `Analyzing frame: ${userProfile.name}...`, 'text-cyan-400', 100);
+      addLog('FRDA', 'ALERT: Moiré pattern detected (2D Surface).', 'text-red-500', 800);
+      addLog('FRDA', 'Liveness Challenge: FAILED (Static Image).', 'text-red-500', 1500);
       addLog('ADA', 'Dispatched High Priority Fraud Alert.', 'text-blue-400', 2000);
       addLog('TAA', 'Correlating: SIM_SWAP_ATTEMPT context.', 'text-purple-400', 2800);
-      addLog('CLA', 'EXECUTING BLOCK: Account Locked.', 'text-red-500', 3500);
+      addLog('CLA', `BLOCKING ID ${userProfile.id}. Locking Account.`, 'text-red-500', 3500);
       setTimeout(() => setActiveAgent(null), 4000);
     }
     else if (type === 'device') {
@@ -335,13 +392,69 @@ export default function FRDASimulation() {
           </h1>
           <p className="text-slate-500 text-sm mt-1">Real-time Fraud & Relationship Defense Agent • SOC Integration v2.4</p>
         </div>
-        <div className="flex gap-3">
-            <div className="flex items-center gap-2 px-3 py-1 bg-slate-900 rounded border border-slate-700">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+        <div className="flex gap-3 items-center">
+            <button 
+              onClick={() => setIsSetupOpen(!isSetupOpen)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded border border-slate-600 text-xs text-slate-300 transition-colors"
+            >
+               <Settings size={14} /> {isSetupOpen ? 'Hide Setup' : 'Configure Profile'}
+            </button>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 rounded border border-slate-700">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                 <span className="text-xs font-mono text-slate-400">SYSTEM ONLINE</span>
             </div>
         </div>
       </div>
+
+      {/* Profile Setup Panel (Collapsible) */}
+      {isSetupOpen && (
+        <div className="w-full max-w-6xl mb-6 bg-slate-900/50 border border-slate-700 rounded-xl p-6 flex flex-col md:flex-row gap-6 items-start">
+           <div className="flex-1">
+             <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+               <User size={20} className="text-cyan-400" /> Subject Profile
+             </h3>
+             <p className="text-sm text-slate-400 mb-4">
+               Upload a photo to test the FRDA detection logic against your specific identity profile. 
+               This demonstrates the "Contextual Signals" capability.
+             </p>
+             <div className="grid grid-cols-2 gap-4">
+               <div>
+                 <label className="block text-xs font-bold text-slate-500 mb-1">SUBJECT NAME</label>
+                 <input 
+                   type="text" 
+                   value={userProfile.name}
+                   onChange={(e) => setUserProfile({...userProfile, name: e.target.value})}
+                   className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-sm text-white focus:border-cyan-500 outline-none"
+                 />
+               </div>
+               <div>
+                 <label className="block text-xs font-bold text-slate-500 mb-1">SUBJECT ID</label>
+                 <input 
+                   type="text" 
+                   value={userProfile.id}
+                   onChange={(e) => setUserProfile({...userProfile, id: e.target.value})}
+                   className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-sm text-white focus:border-cyan-500 outline-none"
+                 />
+               </div>
+             </div>
+           </div>
+
+           <div className="flex-shrink-0">
+              <label className="block text-xs font-bold text-slate-500 mb-1">LIVE FEED SOURCE</label>
+              <div className="relative group w-32 h-32 bg-slate-950 border-2 border-dashed border-slate-600 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-cyan-500 hover:bg-slate-900 transition-all overflow-hidden">
+                 {userProfile.photo ? (
+                   <img src={userProfile.photo} alt="Profile" className="w-full h-full object-cover" />
+                 ) : (
+                   <>
+                     <Upload size={24} className="text-slate-500 group-hover:text-cyan-400 mb-2" />
+                     <span className="text-[10px] text-slate-500 text-center px-2">Click to Upload Photo</span>
+                   </>
+                 )}
+                 <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
+              </div>
+           </div>
+        </div>
+      )}
 
       {/* Main Grid */}
       <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -374,7 +487,7 @@ export default function FRDASimulation() {
           </div>
 
           {/* The Simulated Camera */}
-          <CameraFeed scenario={scenario} scanLine={scanLine} isScanning={true} />
+          <CameraFeed scenario={scenario} scanLine={scanLine} isScanning={true} userProfile={userProfile} />
 
           {/* The Agent Workflow Visualization */}
           <SOCPipeline activeAgent={activeAgent} logs={logs} />
